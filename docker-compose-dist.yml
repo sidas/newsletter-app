@@ -1,0 +1,57 @@
+version: '3'
+
+services:
+  newsletter_php:
+    build:
+      context: ./docker/php/
+    container_name: newsletter_php
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www/html
+    ports:
+      - "9000:9000"
+    volumes:
+      - newsletter_sync:/var/www/html:cached
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini:cached
+      - ./docker/php/www.conf:/usr/local/etc/php-fpm.d/www.conf:cached
+      - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini:cached
+    networks:
+      - newsletter-network
+
+  newsletter_nginx:
+    image: nginx:alpine
+    container_name: newsletter_nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80"
+    volumes:
+      - newsletter_sync:/var/www/html:cached
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/:cached
+      - ./docker/log/nginx:/var/log/nginx
+    networks:
+      - newsletter-network
+
+  mailhog:
+    build:
+      context: ./docker/mailhog
+    container_name: mailhog
+    working_dir: /home/mailhog
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+    networks:
+      - newsletter-network
+
+#Docker Networks
+networks:
+  newsletter-network:
+    driver: bridge
+
+#Volumes
+volumes:
+  newsletter_sync:
+    external: true
